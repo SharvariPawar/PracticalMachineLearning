@@ -1,0 +1,154 @@
+<html>
+
+<head>
+<title> "CourseProject-Practical Machine Learning" </title>
+</head>
+
+<body>
+
+
+<b> Backgound Introduction and Question</B>
+<p>
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+The data consists of a Training data and a Test data (to be used to validate the selected model).
+</p>
+
+<p>
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with.
+</p>
+<b>Data Loading</b>
+
+
+
+<!--begin.rcode
+library("lattice")
+library("ggplot2")
+library("caret")
+library("rpart")
+library("rpart.plot")
+library("rattle")
+library("RColorBrewer")
+library("randomForest")
+library("corrplot")
+library("gbm")
+
+training <- read.csv("~/Data Science Specialization/C8-Practical Machine Learning/WEEK 4/pml-training.csv")
+testing <- read.csv("~/Data Science Specialization/C8-Practical Machine Learning/WEEK 4/pml-testing.csv")
+end.rcode-->
+
+<p>
+There are 19622 observations of 160 variables in the Training dataset and 20 observations of 160 variables in Testing dataset.
+</p>
+<b> Data cleaning </b>
+<p>
+All the variables which contain all NA values are discarded.
+</p>
+
+<!--begin.rcode
+training<- training[, colSums(is.na(training)) == 0]
+testing<- testing[, colSums(is.na(testing)) == 0]
+dim(training)
+dim(testing)
+end.rcode-->
+
+<p>
+
+Also dropping first 7 columns as there are unnecessary for predicting
+
+</p>
+<!--begin.rcode
+training <- training[, -c(1:7)]
+testing <- testing[, -c(1:7)]
+dim(training)
+dim(testing)
+end.rcode-->
+
+
+<b> Partitioning the Training set into two</b>
+<p>
+
+We were provided with a large training set (19,622 entries) and a small testing set (20 entries). Instead of performing the algorithm on the entire training set, as it would be time consuming. We will partition Training data set into two data sets, 70% for newTraining, 30% for newTesting. But the testing data (20 obs. of 53 variables)will stay as is and will be used later to test the algorithm on the 20 cases.
+</p>
+<!--begin.rcode
+set.seed(1234)
+inTrain <- createDataPartition(training$classe, p = 0.7, list = FALSE)
+newTraining <- training[inTrain, ]
+newTesting <- training[-inTrain, ]
+dim(newTraining)
+dim(newTesting)
+end.rcode-->
+<p>
+
+Cleaning even further by removing the Near Zero variance (NZV) variables.
+
+</p>
+<!--begin.rcode
+NZV <- nearZeroVar(newTraining)
+newTraining <- newTraining[, -NZV]
+newTesting <- newTesting[, -NZV]
+dim(newTraining)
+dim(newTesting)
+end.rcode-->
+
+<b>Prediction Model Building</b>
+ <p>
+Three methods will be applied to model the regressions (in the Training dataset) and the best one (with higher accuracy when applied to the Testing dataset) will be used for the quiz predictions. The methods are: Random Forests, Decision Tree and Generalized Boosted Model, as described below.
+A Confusion Matrix is plotted at the end of each analysis to better visualize the accuracy of the models.
+</p>
+
+<b>Method 1: Prediction with Decision Tree</b>
+
+<!--begin.rcode
+set.seed(12345)
+## We first determine the model
+modFit1 <- rpart(classe ~ ., data=newTraining, method="class")
+## To view the decision tree use function fancyRpartPlot().
+fancyRpartPlot(modFit1)
+## prediction on Test dataset
+predict1 <- predict(modFit1, newTesting, type = "class")
+result1 <- confusionMatrix(predict1, newTesting$classe)
+result1
+end.rcode-->
+
+<b> We see that the accuracy rate of the model is low: 0.6879 and therefore the out-of-sample-error is about 0.3. </b>
+
+<b> Method 2: Prediction with Random Forest</b>
+
+<!--begin.rcode
+set.seed(12345)
+## We first determine the model
+modFit2<-randomForest(classe~.,data=newTraining)
+## prediction on Test dataset
+predict2<-predict(modFit2,newTesting,type="class")
+result2<-confusionMatrix(predict2,newTesting$classe)
+result2
+end.rcode-->
+
+<b> We see that the accuracy rate of the model is: 0.9966 and therefore the out-of-sample-error is equal to 0.0034. </b>
+
+<b> Method 3: Prediction with Generalized Boosted Model</b>
+
+<!--begin.rcode
+set.seed(12345)
+controlParam <- trainControl(method = "repeatedcv", number = 5, repeats = 1)
+modFit3<-train(classe~.,data=newTraining,method="gbm",verbose=FALSE,trControl = controlParam)
+modFit3$finalModel
+predict3<-predict(modFit3,newTesting)
+result3<-confusionMatrix(predict3,newTesting$classe)
+result3
+end.rcode-->
+
+
+<b> We see that the accuracy rate of the model is: 0.9633 and therefore the out-of-sample-error is equal to 0.0367. </b>
+
+<b> Model Selection:It is possible to see that Random Forest produces the model with the highest accuracy</b>
+
+<b> Finally, the model chosen is applied to the test set to predict the type of exercise.</b>
+
+<!--begin.rcode
+FinalResult <- predict(modFit2, testing)
+FinalResult
+end.rcode-->
+
+</body>
+</html>
